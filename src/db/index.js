@@ -12,4 +12,6 @@ const connectDB = async () => {
     }
 }
 
+// once this async gets executed so its return a promise which needs to be handled
+
 export default connectDB;
