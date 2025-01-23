@@ -7,7 +7,7 @@ import { app } from "./app.js";
 // import { DB_NAME } from "./constants";
 
 dotenv.config({
-  path: "./env",
+  path: "./env"
 });
 
 // once this async gets executed so its return a promise which needs to be handled when called that function.

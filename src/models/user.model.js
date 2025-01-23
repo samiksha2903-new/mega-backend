@@ -10,7 +10,7 @@ const userSchema = new Schema({
         unique: true,
         lowercase: true,
         trim: true,
-        index: true
+        index: true // for searching field, this makes searching easy.
     },
     email: {
         type: String,
@@ -29,7 +29,7 @@ const userSchema = new Schema({
         type: String, // cloudinary url
         required: true,
     },
-    username: {
+    coverImage: {
         type: String, // cloudinary url
     },
     watchHistory: [
@@ -50,6 +50,8 @@ const userSchema = new Schema({
     timestamps: true
 })
 
+//pre method, works/functions just before the data save.
+// this fn -> checks if the password modified/change and if yes, then save the password.
 userSchema.pre("save", async function(next) {
     if(!this.isModified("password")) return next();
 
@@ -57,6 +59,7 @@ userSchema.pre("save", async function(next) {
     next()
 })
 
+// check password correct or not.
 userSchema.methods.isPasswordCorrect = async function(password) {
     return await bcrypt.compare(password, this.password)
 }

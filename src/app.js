@@ -16,5 +16,12 @@ app.use(express.static("public")); // making a public folder inside our server t
 app.use(cookieParser());
 
 
+// routes import 
+import userRouter from "./routes/user.routes.js"
+
+
+// routes declaration
+app.use("/api/v1/users", userRouter);
+
 
 export { app }
