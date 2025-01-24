@@ -1,7 +1,5 @@
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
-
-import { v2 as cloudinary } from "cloudinary";
 import { response } from "express";
 
 // Configuration
@@ -19,7 +17,10 @@ const uploadOnCloudinary = async (localFilePath) => {
             resource_type: "auto"
         })
         // file has been uploaded successfully
-        console.log("file is uploaded on cloudinary ", response.url)
+        consol1.log("Avatar response: ", response);
+        console.log("file is uploaded on cloudinary ", response.url);
+        return response;
+
     } catch (error) {
         fs.unlinkSync(localFilePath); // remove the locally saved temporary file as the upload operation got failed.
         return null;
