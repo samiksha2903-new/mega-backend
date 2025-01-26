@@ -266,7 +266,9 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 const getCurrentUser = asyncHandler(async (req, res) => {
   return res
   .status(200)
-  .json(200, req.user, "current user fetched successfully")
+  .json(
+    new ApiResponse(200, req.user, "current user fetched successfully")
+  )
 });
 
 // if user wants to update any file then give it a seperate endpoint. and save that particular file else updating the whole user including all text and images again cause congestion in the network.
@@ -305,6 +307,8 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Avatar file is missing");
   }
 
+  // TODO: delete old image - assignment
+  // make a utility fn -> where take the old url of cloudinary of avatar and delete the old image. 
   const avatar = await uploadOnCloudinary(avatarLocalPath);
 
   if (!avatar.url) {
@@ -358,6 +362,83 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
   );
 });
 
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+    const { username } = req.params;
+
+    if (!username?.trim()) {
+      throw new ApiError(400, "username is missing");
+    }
+
+    // using aggregatation pipelines to find the document which contains the subscriber & channel
+    const channel = await User.aggregate([
+      // match the user
+      {
+        $match: {
+          username: username?.toLowerCase()
+        }
+      },
+      // counts the subscribers of a user/channel through channel
+      {
+        $lookup: {
+          from: "subscriptions", // name of model
+          localField: "_id",
+          foreignField: "channel",
+          as: "subscribers"
+        }
+      },
+      // counts the channel that user have subscribed to through subscriber
+      {
+        $lookup: {
+          from: "subscriptions",
+          localField: "_id",
+          foreignField: "subscriber",
+          as: "subscribedTo"
+        }
+      },
+      {
+        $addFields: {
+          subscribersCount: {
+            $size: "$subscribers"
+          },
+          channelsSubscribedToCount: {
+            $size: "$subscribedTo"
+          },
+          // this fn shows that whether that user have subscribed or not
+          isSubscribed: {
+            $cond: {
+              if: {$in: [req.user?._id, "$subscribers.subscriber"]},
+              then: true,
+              else: false
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          fullName: 1,
+          username: 1,
+          subscribersCount: 1,
+          channelsSubscribedToCount: 1,
+          isSubscribed: 1,
+          avatar: 1,
+          coverImage: 1,
+          email: 1
+        }
+      }
+    ]);
+    console.log("aggregation channel: ", channel);
+
+    if(!channel?.length) {
+      throw new ApiError(404, "Channel does not exsits")
+    }
+
+    return res
+    .status(200)
+    .json(
+      new ApiResponse(200, channel[0], "User channel fetched successfully")
+    )
+})
+
 export { 
   registerUser,
   loginUser,
@@ -367,5 +448,6 @@ export {
   getCurrentUser,
   updateAccountDetails,
   updateUserAvatar,
-  updateUserCoverImage
+  updateUserCoverImage,
+  getUserChannelProfile
 };
