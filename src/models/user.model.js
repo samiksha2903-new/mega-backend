@@ -50,6 +50,7 @@ const userSchema = new Schema({
     timestamps: true
 })
 
+// Hooks -> 
 //pre method, works/functions just before the data save.
 // this fn -> checks if the password modified/change and if yes, then save the password.
 userSchema.pre("save", async function(next) {

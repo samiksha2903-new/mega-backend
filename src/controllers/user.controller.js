@@ -171,8 +171,8 @@ const logoutUser = asyncHandler(async(req, res) => {
   await User.findByIdAndUpdate(
     req.user._id,
     {
-      $set: {
-        refreshToken: undefined
+      $unset: {
+        refreshToken: 1 // this removes the field from document.
       }
     },
     {
@@ -439,7 +439,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(200, channel[0], "User channel fetched successfully")
     )
-})
+});
 
 // refre lec no. - 21
 // this is nested lookup pipeline will do here
@@ -497,7 +497,11 @@ const getWatchHistory = asyncHandler(async (req, res) => {
       "Watch history fetched successfully"
     )
   )
-})
+});
+
+
+// Assignment_1 - Delete user controller
+
 
 export { 
   registerUser,
