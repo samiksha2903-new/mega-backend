@@ -7,6 +7,7 @@ import jwt from "jsonwebtoken";
 //const str = "Bearer abc123xyz";
 //const result = str.replace("Bearer ", "TOKEN: ");
 //console.log(result); // Output: "TOKEN: abc123xyz"
+// cookies is accessible only in Browser client and also can be send in Browser client but in android app/mobiles cookies can't be send hence Authorization headers are used to send the tokens. 
 export const verifyJWT = asyncHandler(async(req, _, next) => {
     try {
         const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "");

@@ -6,7 +6,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 
-
+// here we r not hitting any APIendpoint hence not using utils fn(ApiErr, ApiRes)
 const generateAccessAndRefreshTokens = async(userId) => {
   try {
     const user = await User.findById(userId);
@@ -30,12 +30,12 @@ const generateAccessAndRefreshTokens = async(userId) => {
 const registerUser = asyncHandler(async (req, res) => {
   // ( Algorithm - steps for creation ) :-
   // get user details from frontend
-  // validation - not empty
+  // validation - not empty data passed.
   // check if user already exists: username, email
   // check for images, check for avatar(coverImage is not that compulsary).
   // upload them to cloudinary, avatar.
   // createuser object - create entry in db.
-  //remove password and refresh token field from response
+  // remove password and refresh token field from response
   // check for user creation
   // return res.
 
@@ -60,7 +60,7 @@ const registerUser = asyncHandler(async (req, res) => {
   // const coverImageLocalPath = req.files?.coverImage[0].path;
 
   let coverImageLocalPath;
-  if (req.files && Array.isArray(req.files.coverImage) && req.files.coverIq.length > 0) {
+  if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
     coverImageLocalPath = req.files.coverImage[0].path;
   }
 
@@ -167,19 +167,22 @@ const loginUser = asyncHandler(async (req, res) => {
 
 });
 
+// req.user comes from middleware verifyJWT.
 const logoutUser = asyncHandler(async(req, res) => {
+  // The schema remains unchanged.
+  // The field is deleted from the document but can be re-added later.
   await User.findByIdAndUpdate(
     req.user._id,
     {
       $unset: {
-        refreshToken: 1 // this removes the field from document.
+        refreshToken: 1 // *** this removes the field from document. but schema remains unchanged.
       }
     },
     {
       new: true
     }
   );
-  // this new will return the update value directly instead of calling the query again for updated user.
+  // this new will return the update value/document directly after modification, instead of calling the query again for updated user.
   const options = {
     httpOnly: true,
     secure: true
@@ -190,10 +193,11 @@ const logoutUser = asyncHandler(async(req, res) => {
   .clearCookie("accessToken", options)
   .clearCookie("refreshToken", options)
   .json(new ApiError(200, {}, "User logged Out"));
-})
+});
 
 // when user login so refresh and access tokens gets generate.
 // when access Token will gets expire so instead of logging out user it will use refresh token.
+// The /refresh-token route is not called directly by users but by the frontend when an access token expires.
 const refreshAccessToken = asyncHandler(async (req, res) => {
   const incomingRefreshToken =
     req.cookies.refreshToken || req.body.refreshToken;
@@ -248,7 +252,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
   // }
 
   const user = await User.findById(req.user?._id);
-  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword); // checking the old password entered correct so that new password can be set.
 
   if (!isPasswordCorrect) {
     throw new ApiError(400, "Invalid old password");
@@ -274,12 +278,12 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 
 // if user wants to update any file then give it a seperate endpoint. and save that particular file else updating the whole user including all text and images again cause congestion in the network.
 const updateAccountDetails = asyncHandler(async (req, res) => {
-  const { fullName, email } = req.body;
+  const { fullName, email } = req.body; // user will pass this from frontend form that gets here as req.body
 
   if (!(fullName || email)) {
     throw new ApiError(400,"All fields are required");
   }
-
+// req.user is coming from verifyJWT middleware
   const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
@@ -364,6 +368,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 });
 
 // refre lec no. - 20
+// mainly we r using aggregation bcz -> we want to show the total count of **subscribers** and the channels the user have **subscribed**.
 const getUserChannelProfile = asyncHandler(async (req, res) => {
     const { username } = req.params;
 
@@ -380,6 +385,16 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         }
       },
       // counts the subscribers of a user/channel through channel
+      // to count subscribers of a channel -> count the channels from the documents.
+      // How we counts the subscribers?
+      // -> so each time the user subscribe any channel so the documents gets created containing - channel and subscriber/user - we counts the documents that contains the same channel we want to count.
+      // link : https://chatgpt.com/share/679a492d-ea90-800b-b019-afef4c1c52ba
+      // what's happening here: 
+      // from the user collection -> we are joining to the collection Subscription -> then which field is common take that/ which field to join -> here, from our local user collection _id , and from subscription collection/foreignField channel field -> merge them and take all those documents that have same field common like id here.
+      // here we match the _id field from user collection with the channel field in the subscriptions collection(indirectly it's also a user.)
+      // This step joins the users collection with the subscriptions collection.
+      // It finds all documents in subscriptions where channel matches the user’s _id.
+      // The matching subscription documents are stored in the subscribers field as an array.
       {
         $lookup: {
           from: "subscriptions", // name of model
@@ -388,7 +403,8 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
           as: "subscribers"
         }
       },
-      // counts the channel that user have subscribed to through subscriber
+      // counts the channel that user have subscribed to through subscriber/that user.
+      // to count the subscribed channel by the user -> count that user from the documents.
       {
         $lookup: {
           from: "subscriptions",
@@ -397,6 +413,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
           as: "subscribedTo"
         }
       },
+      // here counting the total subscribers and the subscribed by user through -> $addFields -> $size - it counts the total length of how much documents.
       {
         $addFields: {
           subscribersCount: {
@@ -406,6 +423,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
             $size: "$subscribedTo"
           },
           // this fn shows that whether that user have subscribed or not
+          // $cond works like an if-else statement.
           isSubscribed: {
             $cond: {
               if: {$in: [req.user?._id, "$subscribers.subscriber"]},
@@ -415,6 +433,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
           }
         }
       },
+      // Each field is set to 1, which means include this field in the output.
       {
         $project: {
           fullName: 1,
@@ -444,6 +463,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
 // refre lec no. - 21
 // this is nested lookup pipeline will do here
 // watchHistory -> videos(id) -> video owner to get the user details again to -> form the complete document.
+// mongoose create the id in string form but mongo contains the id in object id form so mongoose doesn't work in aggregation pipelines.
 
 const getWatchHistory = asyncHandler(async (req, res) => {
   const user = await User.aggregate([
@@ -452,6 +472,8 @@ const getWatchHistory = asyncHandler(async (req, res) => {
         _id: new mongoose.Types.ObjectId(req.user._id)
       }
     },
+    // watchHistory in User contains an array of video _ids.
+    // videos._id is matched against watchHistory to retrieve the corresponding video documents.
     {
       $lookup: {
         from: "videos",
@@ -476,6 +498,9 @@ const getWatchHistory = asyncHandler(async (req, res) => {
               ]
             }
           },
+          // $lookup returns an array of matching documents.
+          // Since each video has only one owner, we extract the first element using $first.
+          // This ensures owner is a single object instead of an array.
           {
             $addFields: {
               owner: {
@@ -483,10 +508,13 @@ const getWatchHistory = asyncHandler(async (req, res) => {
               }
             }
           }
+          // so basically here we got only owner field which conatins -> $owner
         ]
       }
     }
   ]);
+
+  console.log("watchHistory pipeline :- ", user);
 
   return res
   .status(200)

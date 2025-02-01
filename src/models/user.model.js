@@ -54,7 +54,7 @@ const userSchema = new Schema({
 //pre method, works/functions just before the data save.
 // this fn -> checks if the password modified/change and if yes, then save the password.
 userSchema.pre("save", async function(next) {
-    if(!this.isModified("password")) return next();
+    if(!this.isModified("password")) return next(); // if password is not modified/change then why to hash it ?, directly return and end the process.
 
     this.password = await bcrypt.hash(this.password, 10)
     next();
