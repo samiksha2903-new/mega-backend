@@ -4,12 +4,17 @@ import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
 import {Video} from "../models/video.model.js"
+import { User } from "../models/user.model.js"
 
 
 const createPlaylist = asyncHandler(async (req, res) => {
     // only creating the empty playlist(no videos, only playlist with name and des)
     const {name, description} = req.body;
     const userId = req.user?._id;
+
+    if (!isValidObjectId(userId)) {
+        throw new ApiError(400, "Invalid user ID format")
+    }
 
     if (
         [name, description].some((field) => field?.trim() === " ")
@@ -46,14 +51,16 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
     // pipelines for fetching playlist and owner details
     const {userId} = req.params;
 
-    if (!userId) {
-        throw new ApiError(400, "userId is invalid");
+    if (!isValidObjectId(userId)) {
+        throw new ApiError(400, "Invalid user ID format")
     }
+
+    const user = await User.findById(userId);
 
     const userPlaylist = await Playlist.aggregate([
         {
             $match: {
-                owner: new mongoose.Types.ObjectId(userId) // error might occur here
+                owner: new mongoose.Types.ObjectId(user._id) // error might occur here
             }
         },
         {
