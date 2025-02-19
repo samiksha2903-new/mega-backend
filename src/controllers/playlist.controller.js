@@ -221,6 +221,20 @@ const getPlaylistById = asyncHandler(async (req, res) => {
         }
     ]);
 
+    if (!getPlaylist) {
+        throw new ApiError(500, "Error while fetching playlist")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            getPlaylist,
+            (getPlaylist.length === 0) ? "No playlist found" : "All playlist fetched successfully"
+        )
+    )
+
 });
 
 const addVideoToPlaylist = asyncHandler(async (req, res) => {
