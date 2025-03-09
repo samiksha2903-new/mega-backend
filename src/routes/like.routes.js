@@ -4,8 +4,8 @@ import {
     toggleCommentLike,
     toggleTweetLike,
     toggleVideoLike
-} from "../controllers/like.controller";
-import { verifyJWT} from "../middlewares/auth.middleware"
+} from "../controllers/like.controller.js";
+import { verifyJWT} from "../middlewares/auth.middleware.js"
 
 const router = Router();
 router.use(verifyJWT);
